@@ -1,0 +1,50 @@
+{
+  "name": "hpcl_racer_portal_app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@crmackey/fernet": "^0.0.15",
+    "@expo/vector-icons": "^14.1.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-community/datetimepicker": "^8.4.3",
+    "@react-navigation/bottom-tabs": "^7.4.5",
+    "@react-navigation/native": "^7.1.17",
+    "@react-navigation/stack": "^7.4.5",
+    "axios": "^1.11.0",
+    "base-64": "^1.0.0",
+    "buffer": "^6.0.3",
+    "crypto-js": "^4.2.0",
+    "expo": "~53.0.20",
+    "expo-constants": "^17.1.7",
+    "expo-crypto": "~14.1.5",
+    "expo-file-system": "~18.1.11",
+    "expo-image-picker": "~16.1.4",
+    "expo-linear-gradient": "~14.1.5",
+    "expo-print": "~14.1.4",
+    "expo-sharing": "~13.1.5",
+    "expo-status-bar": "~2.2.3",
+    "fernet": "^0.3.3",
+    "js-base64": "^3.7.7",
+    "lucide-react-native": "^0.536.0",
+    "react": "19.0.0",
+    "react-native": "0.79.5",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-get-random-values": "^1.11.0",
+    "react-native-modal": "^14.0.0-rc.1",
+    "react-native-pager-view": "6.7.1",
+    "react-native-reanimated": "~3.17.4",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "react-native-toast-message": "^2.3.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0"
+  },
+  "private": true
+}
