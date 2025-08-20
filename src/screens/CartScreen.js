@@ -128,42 +128,44 @@ export default function CartScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
-          {[...cartItems].reverse().map((item, index) => (
-            <View key={item.cart_id ?? index} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.brand}>{item.brand_name}</Text>
-                <TouchableOpacity
-                  accessibilityLabel="Remove item"
-                  onPress={() => confirmDelete(item.cart_id)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="trash" size={22} color="red" />
-                </TouchableOpacity>
-              </View>
+          {[...cartItems]
+            .sort((a, b) => a.cart_id - b.cart_id) // Change to b.cart_id - a.cart_id for newest first
+            .map((item) => (
+              <View key={item.cart_id} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.brand}>{item.brand_name}</Text>
+                  <TouchableOpacity
+                    accessibilityLabel="Remove item"
+                    onPress={() => confirmDelete(item.cart_id)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="trash" size={22} color="red" />
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.cardBody}>
-                <Image
-                  source={{
-                    uri:
-                      item.product_image_url ||
-                      item.image ||
-                      item.primary_image_url ||
-                      'https://via.placeholder.com/80',
-                  }}
-                  style={styles.image}
-                />
-                <View style={styles.info}>
-                  <Text style={styles.name}>{item.product_name}</Text>
-                  <View style={styles.metaRow}>
-                    <Text style={styles.meta}>Pack: {item.pack_size || 1}</Text>
-                    <Text style={styles.dot}>•</Text>
-                    <Text style={styles.meta}>UOM: {item.uom || 'Case'}</Text>
+                <View style={styles.cardBody}>
+                  <Image
+                    source={{
+                      uri:
+                        item.product_image_url ||
+                        item.image ||
+                        item.primary_image_url ||
+                        'https://via.placeholder.com/80',
+                    }}
+                    style={styles.image}
+                  />
+                  <View style={styles.info}>
+                    <Text style={styles.name}>{item.product_name}</Text>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.meta}>Pack: {item.pack_size || 1}</Text>
+                      <Text style={styles.dot}>•</Text>
+                      <Text style={styles.meta}>UOM: {item.uom || 'Case'}</Text>
+                    </View>
+                    <Text style={styles.qty}>Qty: {item.quantity}</Text>
                   </View>
-                  <Text style={styles.qty}>Qty: {item.quantity}</Text>
                 </View>
               </View>
-            </View>
-          ))}
+            ))}
         </ScrollView>
       )}
 

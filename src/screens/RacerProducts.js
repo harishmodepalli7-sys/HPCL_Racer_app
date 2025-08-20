@@ -13,11 +13,10 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCart } from '../context/CartContext';
-import { useWishlist } from '../context/WishlistContext'; // Import wishlist context
+import { useWishlist } from '../context/WishlistContext';
 import Toast from 'react-native-toast-message';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { apiClient } from '../services/apiClient';
-
 
 export default function ProductListScreen() {
   const [products, setProducts] = useState([]);
@@ -41,7 +40,6 @@ export default function ProductListScreen() {
     fetchProducts();
   }, []);
 
-  // Refresh wishlist when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       refreshWishlist();
@@ -60,7 +58,7 @@ export default function ProductListScreen() {
 
       const allProducts = response.data?.data || [];
 
-      // Filter to include only 'spareparts'
+      // Filter to exclude 'spareparts'
       const filtered = allProducts.filter(
         (item) => item.product_type?.toLowerCase() !== 'spareparts'
       );
@@ -74,10 +72,9 @@ export default function ProductListScreen() {
     }
   };
 
-  // Called when user types in search bar
   const handleSearch = (text) => {
     setSearchQuery(text);
-    fetchProducts(text); // dynamic search via API
+    fetchProducts(text);
   };
 
   const handleAddToCart = async (item, quantityRaw = '1') => {
@@ -131,7 +128,6 @@ export default function ProductListScreen() {
         return;
       }
 
-      // Use context method instead of direct API call
       const result = await toggleWishlist(productId);
 
       if (result.success) {
@@ -159,7 +155,6 @@ export default function ProductListScreen() {
     }
   };
 
-  // Dynamically filter products locally on updated searchQuery for smoother UI
   const filteredProducts = products.filter((item) =>
     item.product_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -210,8 +205,13 @@ export default function ProductListScreen() {
                 style={styles.qtyBtn}
                 onPress={() => {
                   const currentQty = parseInt(quantityByProduct[item.id]) || 1;
-                  const qty = Math.max(currentQty - 1, 1);
-                  setQuantityByProduct(prev => ({ ...prev, [item.id]: qty.toString() }));
+                  if (currentQty === 1) {
+                    // Collapse quantity controls on pressing "-" at 1
+                    setExpandedProductIds((prev) => prev.filter((pid) => pid !== item.id));
+                  } else {
+                    const qty = currentQty - 1;
+                    setQuantityByProduct(prev => ({ ...prev, [item.id]: qty.toString() }));
+                  }
                 }}
               >
                 <Text style={styles.qtyText}>-</Text>
@@ -246,6 +246,15 @@ export default function ProductListScreen() {
               }}
             >
               <Text style={styles.confirmText}>Add to Cart</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => {
+                setExpandedProductIds((prev) => prev.filter((pid) => pid !== item.id));
+              }}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -289,7 +298,6 @@ export default function ProductListScreen() {
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#386b8eff', padding: 10 },
@@ -369,7 +377,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 6,
     alignItems: 'center',
-    marginTop: 6,
   },
   confirmText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  cancelBtn: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: '#007bff',
+    fontWeight: 'bold',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
 });

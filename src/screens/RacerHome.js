@@ -37,22 +37,19 @@ import Animated, {
 const { width, height } = Dimensions.get('window');
 const cardWidth = (width - 60) / 2;
 
-// Memoized Wishlist Toggle Button
 const CardWishlistToggle = memo(({ productId, isInWishlist, toggleWishlist, disabled }) => {
   const [loading, setLoading] = useState(false);
-
   const handleToggle = async () => {
     if (disabled) return;
     setLoading(true);
     try {
       await toggleWishlist(productId);
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Failed to update wishlist');
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <TouchableOpacity
       onPress={handleToggle}
@@ -73,6 +70,76 @@ const CardWishlistToggle = memo(({ productId, isInWishlist, toggleWishlist, disa
   );
 });
 
+const ProductCard = memo(({ item, isInWishlist, toggleWishlist, addToCart, onSelect }) => {
+  const [quantity, setQuantity] = useState(1);
+  const [showQuantityControls, setShowQuantityControls] = useState(false);
+  const maxReorderLimit = 1000;
+
+  const increment = () => {
+    if (quantity < maxReorderLimit) setQuantity(quantity + 1);
+  };
+
+  const decrement = () => {
+    if (quantity > 1) setQuantity(quantity - 1);
+    else {
+      setShowQuantityControls(false);
+      setQuantity(1);
+    }
+  };
+
+  const handleInitialAddPress = () => setShowQuantityControls(true);
+
+  const handleConfirmAddToCart = () => {
+    addToCart({ product_id: item.product_id, quantity });
+    Alert.alert('Added to Cart', `${item.name} (x${quantity})`);
+    setQuantity(1);
+    setShowQuantityControls(false);
+  };
+
+  const getStockColor = (stock) => {
+    if (stock === 0) return '#FF5722';
+    if (stock > 0 && stock < 5) return '#FF9800';
+    return '#4CAF50';
+  };
+
+  return (
+    <TouchableOpacity onPress={() => onSelect(item)} activeOpacity={0.8} style={{ position: 'relative' }}>
+      <View style={styles.card}>
+        <CardWishlistToggle productId={item.product_id} isInWishlist={isInWishlist} toggleWishlist={toggleWishlist} disabled={false} />
+        <View style={styles.productImageContainer}>
+          <Image source={{ uri: item.image }} style={styles.productImage} />
+        </View>
+        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+        <View style={styles.productFooter}>
+          {showQuantityControls ? (
+            <View style={{ width: '100%', alignItems: 'center' }}>
+              <View style={styles.quantityControlContainer}>
+                <TouchableOpacity onPress={decrement} style={styles.qtyButton}>
+                  <Text style={styles.qtyButtonText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.quantityNumber}>{quantity}</Text>
+                <TouchableOpacity onPress={increment} style={styles.qtyButton}>
+                  <Text style={styles.qtyButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={[styles.addButton, { marginTop: 10, paddingHorizontal: 40 }]} onPress={handleConfirmAddToCart}>
+                <Text style={styles.addButtonText}>ADD</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.footerRow}>
+              <Text style={[styles.quantityNumber, { color: getStockColor(item.stock) }]}>{item.stock} Left</Text>
+              <TouchableOpacity style={styles.addButton} onPress={handleInitialAddPress}>
+                <Text style={styles.addButtonText}>ADD</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 export default function InventoryScreen() {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist, wishlistItems } = useWishlist();
@@ -86,16 +153,13 @@ export default function InventoryScreen() {
   const [storageLoaded, setStorageLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Options Menu visibility
   const [optionsVisible, setOptionsVisible] = useState(false);
 
   const headerMarginTop = insets.top + (Platform.OS === 'ios' ? 20 : 12);
 
-  // Gesture and animation values
   const translateY = useSharedValue(0);
   const modalOpacity = useSharedValue(1);
 
@@ -114,9 +178,7 @@ export default function InventoryScreen() {
   }, []);
 
   useEffect(() => {
-    if (storageLoaded) {
-      fetchInventory(customerId);
-    }
+    if (storageLoaded) fetchInventory(customerId);
   }, [storageLoaded, customerId]);
 
   const fetchInventory = async (custId) => {
@@ -129,11 +191,7 @@ export default function InventoryScreen() {
         setLoading(false);
         return;
       }
-      const response = await apiClient.post('/api/inventory/fetch_inventory', {
-        customer_id: custId,
-        fields: [],
-      });
-
+      const response = await apiClient.post('/api/inventory/fetch_inventory', { customer_id: custId, fields: [] });
       if (response.data?.status && Array.isArray(response.data.data)) {
         const cleanedData = response.data.data.map((item) => ({
           product_id: item.product_id,
@@ -143,9 +201,7 @@ export default function InventoryScreen() {
           image: item.primary_image_url || 'https://via.placeholder.com/150',
           partNo: item.product_code,
           brand: item.brand_name,
-          lastPurchaseDate: item.last_purchase_date
-            ? new Date(item.last_purchase_date).toLocaleDateString()
-            : 'N/A',
+          lastPurchaseDate: item.last_purchase_date ? new Date(item.last_purchase_date).toLocaleDateString() : 'N/A',
           sku: item.sku,
           packSize: item.pack_size,
           uom: item.uom,
@@ -167,19 +223,11 @@ export default function InventoryScreen() {
     }
   };
 
-  const filteredData = inventoryData.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredData = inventoryData.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchInventory(customerId);
-  };
-
-  const getStockColor = (stock) => {
-    if (stock === 0) return '#FF5722';
-    if (stock > 0 && stock < 5) return '#FF9800';
-    return '#4CAF50';
   };
 
   const gestureHandler = useAnimatedGestureHandler({
@@ -193,9 +241,7 @@ export default function InventoryScreen() {
     onEnd: () => {
       if (translateY.value > height / 4) {
         modalOpacity.value = withTiming(0);
-        translateY.value = withTiming(height, {}, () => {
-          runOnJS(closeModal)();
-        });
+        translateY.value = withTiming(height, {}, () => runOnJS(closeModal)());
       } else {
         translateY.value = withTiming(0);
         modalOpacity.value = withTiming(1);
@@ -223,68 +269,56 @@ export default function InventoryScreen() {
     modalOpacity.value = 1;
   }, []);
 
-  // Card Renderer
   const renderCard = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => {
-        setSelectedProduct(item);
+    <ProductCard
+      item={item}
+      isInWishlist={isInWishlist}
+      toggleWishlist={toggleWishlist}
+      addToCart={addToCart}
+      onSelect={(product) => {
+        setSelectedProduct(product);
         setModalVisible(true);
       }}
-      activeOpacity={0.8}
-      style={{ position: 'relative' }}
-    >
-      <View style={styles.card}>
-        <CardWishlistToggle
-          productId={item.product_id}
-          isInWishlist={isInWishlist}
-          toggleWishlist={toggleWishlist}
-          disabled={false}
-        />
-
-        <View style={styles.productImageContainer}>
-          <Image source={{ uri: item.image }} style={styles.productImage} />
-        </View>
-
-        <Text style={styles.productName} numberOfLines={2}>
-          {item.name}
-        </Text>
-
-        <View style={styles.productFooter}>
-          <View style={styles.quantityContainer}>
-            <Text style={[styles.quantityNumber, { color: getStockColor(item.stock) }]}>
-              {item.stock}
-            </Text>
-            <Text style={styles.quantityLabel}>Left</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => {
-              addToCart({ product_id: item.product_id, quantity: 1 });
-              Alert.alert('Added to Cart', `${item.name} (x1)`);
-            }}
-          >
-            <Text style={styles.addButtonText}>ADD</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
+    />
   );
 
-  const wishlistCount = wishlistItems ? wishlistItems.length : 0;
-
-  // Product Details Modal
   const ProductModal = () => {
     if (!selectedProduct) return null;
+
+    const [quantity, setQuantity] = useState(1);
+    const [showQuantityControls, setShowQuantityControls] = useState(false);
+
+    const maxReorderLimit = 1000;
+    const currentStock = selectedProduct.stock ?? 0;
+
+    const increment = () => {
+      if (quantity < maxReorderLimit) setQuantity(quantity + 1);
+    };
+
+    const decrement = () => {
+      if (quantity > 1) setQuantity(quantity - 1);
+      else {
+        setShowQuantityControls(false);
+        setQuantity(1);
+      }
+    };
+
+    const getStockColor = (stock) => {
+      if (stock === 0) return '#FF5722';
+      if (stock > 0 && stock < 5) return '#FF9800';
+      return '#4CAF50';
+    };
+
+    const confirmAddToCart = () => {
+      addToCart({ product_id: selectedProduct.product_id, quantity });
+      Alert.alert('Added to Cart', `${selectedProduct.name} (x${quantity})`);
+      setQuantity(1);
+      setShowQuantityControls(false);
+      closeModal();
+    };
+
     return (
-      <Modal
-        animationType="slide"
-        transparent
-        visible={modalVisible}
-        onRequestClose={closeModal}
-        presentationStyle="overFullScreen"
-        statusBarTranslucent
-      >
+      <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={closeModal} presentationStyle="overFullScreen" statusBarTranslucent>
         <PanGestureHandler onGestureEvent={gestureHandler}>
           <Animated.View style={animatedStyle}>
             <View style={styles.modalContent}>
@@ -300,35 +334,34 @@ export default function InventoryScreen() {
 
               <View style={styles.modalInfoSection}>
                 <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
-                <Text style={styles.lastPurchasedText}>
-                  Last Purchased: {selectedProduct.lastPurchaseDate || 'N/A'}
-                </Text>
+                <Text style={styles.lastPurchasedText}>Last Purchased: {selectedProduct.lastPurchaseDate || 'N/A'}</Text>
 
                 <View style={styles.modalQuantityRow}>
-                  <Text
-                    style={[
-                      styles.modalQuantityText,
-                      { color: getStockColor(selectedProduct.stock) },
-                    ]}
-                  >
-                    {selectedProduct.stock ?? 'N/A'} Left
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.modalAddButton}
-                    onPress={() => {
-                      addToCart({
-                        product_id: selectedProduct.product_id,
-                        quantity: 1,
-                      });
-                      Alert.alert('Added to Cart', `${selectedProduct.name} (x1)`);
-                      closeModal();
-                    }}
-                  >
-                    <Text style={styles.modalAddButtonText}>ADD</Text>
-                  </TouchableOpacity>
+                  <Text style={[styles.modalQuantityText, { color: getStockColor(currentStock) }]}>{currentStock} Left</Text>
+
+                  {showQuantityControls ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TouchableOpacity onPress={decrement} style={styles.qtyButton}>
+                        <Text style={styles.qtyButtonText}>-</Text>
+                      </TouchableOpacity>
+
+                      <Text style={[styles.quantityNumber, { marginHorizontal: 12 }]}>{quantity}</Text>
+
+                      <TouchableOpacity onPress={increment} style={styles.qtyButton}>
+                        <Text style={styles.qtyButtonText}>+</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity style={[styles.addButton, { marginLeft: 16, paddingHorizontal: 20 }]} onPress={confirmAddToCart}>
+                        <Text style={styles.addButtonText}>ADD</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={styles.modalAddButton} onPress={() => setShowQuantityControls(true)}>
+                      <Text style={styles.modalAddButtonText}>ADD</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
-                {/* Product Specs */}
                 <View style={styles.specificationsHeader}>
                   <MaterialIcons name="inventory" size={20} color="#666" style={{ marginRight: 8 }} />
                   <Text style={styles.specificationsTitle}>Product Specifications</Text>
@@ -358,63 +391,51 @@ export default function InventoryScreen() {
     );
   };
 
-  // Options Popup Menu
   const OptionsMenu = () => (
-    <Modal
-      transparent
-      visible={optionsVisible}
-      animationType="fade"
-      onRequestClose={() => setOptionsVisible(false)}
-    >
-      <TouchableOpacity
-        style={styles.modalOverlay}
-        activeOpacity={1}
-        onPressOut={() => setOptionsVisible(false)}
-      >
+    <Modal transparent visible={optionsVisible} animationType="fade" onRequestClose={() => setOptionsVisible(false)}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPressOut={() => setOptionsVisible(false)}>
         <View style={styles.optionsMenu}>
           <TouchableOpacity
             style={styles.optionItem}
             onPress={() => {
               setOptionsVisible(false);
-
-              navigation.navigate('OrderScreen'); // 👈 navigate to Orders
+              navigation.navigate('OrderScreen');
             }}
-          > 
-          <Ionicons name="receipt-outline" size={20} color="#333" style={styles.optionIcon} />
+          >
+            <Ionicons name="receipt-outline" size={20} color="#333" style={styles.optionIcon} />
             <Text style={styles.optionText}>Orders</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.optionItem}
             onPress={() => {
-              setOptionsVisible(false); 
-              navigation.navigate('ProfileScreen'); // 👈 navigate to Profile
+              setOptionsVisible(false);
+              navigation.navigate('ProfileScreen');
             }}
-          > 
-          <Ionicons name="person-circle-outline" size={20} color="#333" style={styles.optionIcon} />
+          >
+            <Ionicons name="person-circle-outline" size={20} color="#333" style={styles.optionIcon} />
             <Text style={styles.optionText}>Profile</Text>
-          </TouchableOpacity> 
+          </TouchableOpacity>
 
-           <TouchableOpacity
-          style={[styles.optionItem, { borderBottomWidth: 0 }]}
-          onPress={async () => {
-            setOptionsVisible(false);
-
-            try {
-              await AsyncStorage.clear(); // remove all stored data
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
-            } catch (e) {
-              console.error('Logout failed:', e);
-              Alert.alert('Error', 'Failed to logout. Please try again.');
-            }
-          }}
-        >
-        <Ionicons name="log-out-outline" size={20} color="red" style={styles.optionIcon} />
-          <Text style={[styles.optionText, { color: 'red' }]}>Logout</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.optionItem, { borderBottomWidth: 0 }]}
+            onPress={async () => {
+              setOptionsVisible(false);
+              try {
+                await AsyncStorage.clear();
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              } catch (e) {
+                console.error('Logout failed:', e);
+                Alert.alert('Error', 'Failed to logout. Please try again.');
+              }
+            }}
+          >
+            <Ionicons name="log-out-outline" size={20} color="red" style={styles.optionIcon} />
+            <Text style={[styles.optionText, { color: 'red' }]}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     </Modal>
@@ -423,19 +444,12 @@ export default function InventoryScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={{ flex: 1 }} pointerEvents={modalVisible ? 'none' : 'auto'}>
-        <LinearGradient
-          colors={['#ada0a0ff', '#0c0c0cff']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.gradientBackground}
-        >
+        <LinearGradient colors={['#ada0a0ff', '#0c0c0cff']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.gradientBackground}>
           {loading ? (
             <ActivityIndicator size="large" color="#007bff" style={{ marginTop: 100 }} />
           ) : (
             <>
-              {/* Header Bar */}
               <View style={[styles.headerRow, { marginTop: headerMarginTop }]}>
-                {/* Search */}
                 <View style={styles.searchContainer}>
                   <Ionicons name="search" size={20} color="#888" style={{ marginRight: 8 }} />
                   <TextInput
@@ -448,28 +462,21 @@ export default function InventoryScreen() {
                     returnKeyType="search"
                   />
                 </View>
-                {/* Wishlist */}
-                <TouchableOpacity
-                  style={styles.circularIcon}
-                  onPress={() => navigation.navigate('WishList')}
-                >
+
+                <TouchableOpacity style={styles.circularIcon} onPress={() => navigation.navigate('WishList')}>
                   <Ionicons name="heart-outline" size={22} color="#e11d48" />
-                  {wishlistCount > 0 && (
+                  {wishlistItems?.length > 0 && (
                     <View style={styles.wishlistBadge}>
-                      <Text style={styles.wishlistBadgeText}>{wishlistCount}</Text>
+                      <Text style={styles.wishlistBadgeText}>{wishlistItems.length}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
-                {/* More Options */}
-                <TouchableOpacity
-                  style={styles.circularIcon}
-                  onPress={() => setOptionsVisible(true)}
-                >
+
+                <TouchableOpacity style={styles.circularIcon} onPress={() => setOptionsVisible(true)}>
                   <Ionicons name="ellipsis-horizontal" size={22} color="#444" />
                 </TouchableOpacity>
               </View>
 
-              {/* Products List */}
               <FlatList
                 data={filteredData}
                 numColumns={2}
@@ -478,31 +485,25 @@ export default function InventoryScreen() {
                 renderItem={renderCard}
                 contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 45 }]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                ListEmptyComponent={
-                  <Text style={{ textAlign: 'center', marginTop: 30 }}>No items found.</Text>
-                }
+                ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 30 }}>No items found.</Text>}
               />
             </>
           )}
         </LinearGradient>
       </View>
 
-      {/* Popups */}
       <ProductModal />
       <OptionsMenu />
     </SafeAreaView>
   );
 }
 
-// ==================== Styles ====================
 const styles = StyleSheet.create({
   gradientBackground: {
     flex: 1,
     paddingHorizontal: 12,
     paddingTop: 12,
   },
-
-  // HEADER
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -552,8 +553,6 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   wishlistBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-
-  // PRODUCT CARD
   columnWrapper: { justifyContent: 'space-between' },
   card: {
     backgroundColor: '#FFFFFF',
@@ -599,23 +598,47 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   productFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     width: '100%',
   },
-  quantityContainer: { alignItems: 'center' },
-  quantityNumber: { fontSize: 18, fontWeight: '700', marginBottom: 2 },
-  quantityLabel: { fontSize: 12, color: '#666' },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  quantityControlContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  qtyButton: {
+    backgroundColor: '#ddd',
+    borderRadius: 12,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 6,
+  },
+  qtyButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+  },
+  quantityNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
   addButton: {
     backgroundColor: '#2196F3',
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 8,
   },
-  addButtonText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-
-  // PRODUCT MODAL
+  addButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
@@ -623,14 +646,25 @@ const styles = StyleSheet.create({
     maxHeight: '82%',
     padding: 20,
   },
-  modalHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10 },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 10,
+  },
   closeButton: {
     padding: 6,
     borderRadius: 20,
     backgroundColor: '#f1f1f1',
   },
-  modalImageSection: { alignItems: 'center', marginBottom: 20 },
-  modalProductImage: { width: 160, height: 220, resizeMode: 'contain' },
+  modalImageSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalProductImage: {
+    width: 160,
+    height: 220,
+    resizeMode: 'contain',
+  },
   modalProductName: {
     fontSize: 20,
     fontWeight: '700',
@@ -650,22 +684,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  modalQuantityText: { fontSize: 18, fontWeight: '700' },
+  modalQuantityText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
   modalAddButton: {
     backgroundColor: '#2196F3',
     borderRadius: 25,
     paddingHorizontal: 32,
     paddingVertical: 12,
   },
-  modalAddButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  specificationsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  specificationsTitle: { fontSize: 17, fontWeight: '700', color: '#222' },
-  separatorLine: { height: 1, backgroundColor: '#eee', marginBottom: 16, marginTop: 4 },
-  specRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  specLabel: { fontSize: 14, fontWeight: '600', color: '#555' },
-  specValue: { fontSize: 14, color: '#222' },
-
-  // OPTIONS MENU
+  modalAddButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  specificationsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  specificationsTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#222',
+  },
+  separatorLine: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  specRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  specLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  specValue: {
+    fontSize: 14,
+    color: '#222',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.25)',
@@ -696,4 +759,3 @@ const styles = StyleSheet.create({
   optionIcon: { marginRight: 12 },
   optionText: { fontSize: 15, color: '#333', fontWeight: '500' },
 });
-  
