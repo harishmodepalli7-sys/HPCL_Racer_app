@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import axios from 'axios';
+import { apiClient } from '../services/apiClient';
 
 export default function CartScreen() {
   const { cartItems, fetchCart, removeCartItem, clearCart } = useCart();
@@ -48,9 +50,9 @@ export default function CartScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'OK',
-          onPress: () => {
-            clearCart();
-            fetchCart();
+          onPress: async () => {
+            await clearCart();
+            await fetchCart();
           },
           style: 'destructive',
         },
@@ -58,6 +60,7 @@ export default function CartScreen() {
     );
   };
 
+  // PLACE ORDER WITH AXIOS
   const placeOrder = async () => {
     if (cartItems.length === 0) {
       Alert.alert('Cart Empty', 'Please add items before placing an order.');
@@ -74,13 +77,12 @@ export default function CartScreen() {
     }
 
     try {
-      const response = await fetch('/api/orders/place_order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cart_ids }),
-      });
-
-      const data = await response.json();
+      const response = await apiClient.post(
+        '/api/orders/place_order',
+        { cart_ids },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      const data = response.data;
 
       if (
         data?.status === true ||
@@ -129,7 +131,7 @@ export default function CartScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
           {[...cartItems]
-            .sort((a, b) => a.cart_id - b.cart_id) // Change to b.cart_id - a.cart_id for newest first
+            .sort((a, b) => a.cart_id - b.cart_id)
             .map((item) => (
               <View key={item.cart_id} style={styles.card}>
                 <View style={styles.cardHeader}>
@@ -288,7 +290,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: '#e2e8f0',
     flexDirection: 'column',
-    // Add dynamic paddingBottom in render with insets.bottom
   },
   totalText: {
     fontSize: 16,
